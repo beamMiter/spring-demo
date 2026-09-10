@@ -4,7 +4,9 @@ import com.techup.spring_demo.dto.NoteRequest;
 import com.techup.spring_demo.dto.NoteResponse;
 import com.techup.spring_demo.entity.Note;
 import com.techup.spring_demo.repository.NoteRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -49,11 +51,28 @@ public class NoteService {
         return true;
     }
 
+    /** เช็กว่ามีโน้ต id นี้อยู่จริงไหม (ใช้ก่อน upload เพื่อไม่ให้เกิดไฟล์ค้างใน storage) */
+    public void ensureExists(Long id) {
+        if (!noteRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found");
+        }
+    }
+
+    /** แนบรูปเข้ากับโน้ต: อัปเดต imageUrl แล้วคืน DTO */
+    public NoteResponse attachFileUrl(Long id, String url) {
+        Note note = noteRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Note not found"));
+
+        note.setImageUrl(url);
+        return toResponse(noteRepository.save(note));
+    }
+
     private NoteResponse toResponse(Note note) {
         return NoteResponse.builder()
                 .id(note.getId())
                 .title(note.getTitle())
                 .content(note.getContent())
+                .imageUrl(note.getImageUrl())
                 .build();
     }
 }

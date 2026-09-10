@@ -3,6 +3,8 @@ package com.techup.spring_demo.controller;
 import com.techup.spring_demo.dto.NoteRequest;
 import com.techup.spring_demo.dto.NoteResponse;
 import com.techup.spring_demo.service.NoteService;
+import com.techup.spring_demo.service.SupabaseStorageService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -12,19 +14,19 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/notes")
+@RequiredArgsConstructor
 public class NoteController {
 
     private final NoteService noteService;
-
-    public NoteController(NoteService noteService) {
-        this.noteService = noteService;
-    }
+    private final SupabaseStorageService supabaseStorageService;
 
     // Create - POST /api/notes -> 201 Created
     @PostMapping
@@ -54,5 +56,15 @@ public class NoteController {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
+    }
+
+    // Upload file and attach its URL to the note - POST /api/notes/{id}/upload -> 200 OK, or 404
+    @PostMapping("/{id}/upload")
+    public ResponseEntity<NoteResponse> uploadForNote(@PathVariable Long id,
+                                                      @RequestParam("file") MultipartFile file) {
+        noteService.ensureExists(id); // เช็ก note ก่อน ไม่ให้ upload ไฟล์ทิ้งไว้เมื่อ id ไม่มีจริง
+        String url = supabaseStorageService.uploadFile(file);
+        NoteResponse updated = noteService.attachFileUrl(id, url);
+        return ResponseEntity.ok(updated);
     }
 }
